@@ -1,10 +1,9 @@
-1.   本地環境安裝[`swagger-php`](https://github.com/zircote/swagger-php)依賴包「地球人都會啦」
+### 開發工具箱
 
+1. 本地開發環境安裝依賴包
      ```php
-     composer require --dev michael/toolbox
+     composer require --dev michaelma/toolbox
      ```
-
-
 
 2.   請在 `Controller` 類中對應的方法 `return` 前，加入如下代碼：
 
