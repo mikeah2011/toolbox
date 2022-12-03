@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static mixed queryBuilder(array $filter, $queryBuilder)
  * @method static mixed filterBuilder(array $filter, $queryBuilder)
  *
- * @see \Toolbox\DBHelper
+ * @see Toolbox\DBHelper
  */
 class DBBuilder extends Facade
 {

@@ -3,183 +3,50 @@
 namespace Toolbox;
 
 use OpenApi\Generator;
-use Illuminate\Support\Str;
+use Toolbox\Facades\DBBuilder;
 
 class SwaggerNotes
 {
     /**
-     * @var string  swagger-php注釋的接口概述
+     * @var object 請求體，解析出 method pathInfo validated 等
      */
-    private $summary = '';
-
+    private $request;
     /**
-     * @var string  swagger-php注釋的接口描述
+     * @var array   返回数据结构
      */
-    private $description = '';
-
-    /**
-     * @var string  swagger-php注釋的操作ID
-     */
-    private $operationId;
-
-    /**
-     * @var string  swagger-php注釋的標籤
-     */
-    private $tags;
-
+    private $response;
     /**
      * @var array   入參、出參及其規則字段對應的備註信息和必填
      */
     private $comments;
 
     /**
-     * @var object 請求體，解析出 method pathInfo input all toArray 等
+     * @var string  SwaggerPHP注釋的接口概述
      */
-    private $request;
+    private $summary = '';
+    /**
+     * @var string  SwaggerPHP注釋的接口描述
+     */
+    private $description = '';
+    /**
+     * @var string  SwaggerPHP注釋的操作ID
+     */
+    private $operationId;
+    /**
+     * @var string  SwaggerPHP注釋的標籤
+     */
+    private $tags;
 
     /**
-     * @var array   返回数据结构
-     */
-    private $response;
-
-    /**
-     * @var string swagger-php 的注释文件路径
-     */
-    private $notesPath;
-
-    /**
-     * @var string 用户置换类文件名
-     */
-    private $class;
-
-    /**
-     * @description 設置swagger-php注釋的接口概述
+     * @description 設置請求體結構
      *
-     * @param string $summary
+     * @param $request
      *
      * @return $this
      */
-    public function setSummary(string $summary): SwaggerNotes
+    public function setRequest($request): SwaggerNotes
     {
-        $this->summary = $summary;
-
-        return $this;
-    }
-
-    /**
-     * @description 設置swagger-php注釋的接口描述
-     *
-     * @param string $description
-     *
-     * @return $this
-     */
-    public function setDescription(string $description): SwaggerNotes
-    {
-        $this->description = $description;
-
-        return $this;
-    }
-
-    /**
-     * @description 設置swagger-php注釋的操作ID
-     *
-     * @param string $function
-     *
-     * @return $this
-     */
-    public function setOperationId(string $function): SwaggerNotes
-    {
-        $this->operationId = $function;
-
-        return $this;
-    }
-
-    /**
-     * @description 設置swagger-php注釋的標籤
-     *
-     * @param string $class
-     *
-     * @return $this
-     */
-    public function setTags(string $class): SwaggerNotes
-    {
-        $this->class = $class;
-        $this->tags = $this->getTags($class);
-
-        return $this;
-    }
-
-    /**
-     * @description 通過類取的標籤，也就是類名
-     *
-     * @param string $class
-     *
-     * @return string
-     */
-    public function getTags(string $class): string
-    {
-        return str_replace('Controller', '', substr($class, strrpos($class, '\\')));
-    }
-
-    /**
-     * @description 通過命名空間設置注釋文件的路徑
-     *
-     * @param string $namespace
-     *
-     * @return $this
-     */
-    public function setNotesPath(string $namespace): SwaggerNotes
-    {
-        $this->notesPath = $this->getPath($namespace, $this->class);
-
-        return $this;
-    }
-
-    /**
-     * @description 根據命名空間及類，定位到文件路徑
-     *
-     * @param string $namespace
-     * @param string $class
-     *
-     * @return string
-     */
-    public function getPath(string $namespace, string $class): string
-    {
-        return base_path(str_replace('\\', '/', $namespace) . '/' . $this->getTags($class));
-    }
-
-    /**
-     * @description 獲取出入參字段的備註信息「含是否必填」
-     *
-     * @param array $tables 指定表
-     * @param array $rules
-     *
-     * @return SwaggerNotes
-     */
-    public function setComments(array $tables, array $rules): SwaggerNotes
-    {
-        $array = $this->request->toArray() + $this->response;
-        $params = camel_snake($array, 'snake_case');
-        $rules = camel_snake($rules, 'camel_case');
-
-        // 遞歸過濾出字段，因為response的結構可能會很深
-        $columns = [];
-        array_walk_recursive($params, static function ($value, $key) use (&$columns) {
-            in_array($key, $columns, true) && $columns[$key] = $value;
-        });
-
-        // 獲取指定表的字段信息
-        $columnsInfo = \Toolbox\Facades\DBBuilder::getColumnsInfo($tables, $columns);
-        foreach ($columnsInfo as &$value) {
-            $value = (array)$value;
-            $rule = $rules[$value['name']] ?? [''];
-            is_string($rule) && $rule = explode('|', $rule);
-            [$required] = $rule;
-            $value['required'] = $required === 'required';
-        }
-        unset($value);
-
-        $this->comments = array_column($columnsInfo, NULL, 'name');
+        $this->request = $request;
 
         return $this;
     }
@@ -200,15 +67,89 @@ class SwaggerNotes
     }
 
     /**
-     * @description 設置請求體結構
+     * @description 獲取出入參字段的備註信息「含是否必填」
      *
-     * @param $request
+     * @param array $tables 指定表
+     * @param array $rules
+     *
+     * @return SwaggerNotes
+     */
+    public function setComments(array $tables, array $rules = []): SwaggerNotes
+    {
+        $array = $this->request->validated() + $this->response;
+        $params = camel_snake($array, 'snake');
+        $rules = camel_snake($rules ?: $this->request->rules(), 'camel');
+        // 遞歸過濾出字段，因為response的結構可能會很深
+        $columns = [];
+        array_walk_recursive($params, static function ($value, $key) use (&$columns) {
+            in_array($key, $columns, true) && $columns[$key] = $value;
+        });
+        // 獲取指定表的字段信息
+        $columnsInfo = DBBuilder::getColumnsInfo($tables, $columns);
+        foreach ($columnsInfo as &$value) {
+            $value = (array)$value;
+            $rule = $rules[$value['name']] ?? [''];
+            is_string($rule) && $rule = explode('|', $rule);
+            $value['required'] = array_first($rule) === 'required';
+        }
+        unset($value);
+        $this->comments = array_column($columnsInfo, NULL, 'name');
+
+        return $this;
+    }
+
+    /**
+     * @description 設置SwaggerPHP注釋的接口概述
+     *
+     * @param string $summary
      *
      * @return $this
      */
-    public function setRequest($request): SwaggerNotes
+    public function setSummary(string $summary): SwaggerNotes
     {
-        $this->request = $request;
+        $this->summary = $summary;
+
+        return $this;
+    }
+
+    /**
+     * @description 設置SwaggerPHP注釋的接口描述
+     *
+     * @param string $description
+     *
+     * @return $this
+     */
+    public function setDescription(string $description): SwaggerNotes
+    {
+        $this->description = $description;
+
+        return $this;
+    }
+
+    /**
+     * @description 設置SwaggerPHP注釋的操作ID
+     *
+     * @param string $function
+     *
+     * @return $this
+     */
+    public function setOperationId(string $function): SwaggerNotes
+    {
+        $this->operationId = $function;
+
+        return $this;
+    }
+
+    /**
+     * @description 設置SwaggerPHP注釋的標籤
+     *
+     * @param string $class
+     *
+     * @return $this
+     */
+    public function setTags(string $class): SwaggerNotes
+    {
+        $this->tags = get_class_name($class);
 
         return $this;
     }
@@ -216,86 +157,46 @@ class SwaggerNotes
     /**
      * @description 「生成|刷新」SwaggerPHP注釋內容以及SwaggerYaml文件
      *
-     * @param $request
-     * @param $response
-     *
-     * @return $this
      */
-    public function generate($request = NULL, $response = NULL): SwaggerNotes
+    public function generate(): void
     {
-        dd(1);
-        // 安全創建目錄並賦值權限
-        if (!is_dir($this->notesPath) && !mkdir($this->notesPath, 0777, true) && !is_dir($this->notesPath)) {
-            throw new \RuntimeException(sprintf('Directory "%s" was not created', $this->notesPath));
-        }
-        $request && $this->setRequest($request);
-        $response && $this->setResponse($response);
-        // 刷新當前接口的swagger-php注釋文檔
-        file_put_contents($this->notesPath . "/{$this->operationId}.php", $this->formatNotes());
-        // 生成刷新整個swagger目錄的swagger-yaml文件
-        file_put_contents(base_path('swagger/swagger_doc.yaml'), Generator::scan([$this->getPath(__NAMESPACE__, __CLASS__)])->toYaml());
-
-        return $this;
+        $baseDir = base_path('swaggers');
+        $swaggerNotesDir = $baseDir . '/' . get_class_name(__CLASS__);
+        generate_file($swaggerNotesDir, 'swagger.php', $this->formatInfo());
+        generate_file($swaggerNotesDir . '/' . $this->tags, $this->operationId . '.php', $this->formatNotes());
+        generate_file($baseDir, 'swagger_doc.yaml', Generator::scan([$swaggerNotesDir])->toYaml());
     }
 
     /**
-     * @description 形参的方式生成文檔
+     * @description 「生成|刷新」SwaggerPHP注釋Info信息
      *
-     * @param          $request
-     * @param          $response
-     * @param array    $tables
-     * @param array    $columnsRules
-     * @param string   $namespace
-     * @param string   $function
-     * @param string   $class
-     * @param string   $summary
-     * @param string   $description
      *
-     * @return SwaggerNotes
+     * @return string
      */
-    public function call(
-        $request,
-        $response,
-        array $tables,
-        array $columnsRules,
-        string $namespace,
-        string $function,
-        string $class,
-        string $summary,
-        string $description): SwaggerNotes
+    private function formatInfo(): string
     {
-        return $this->setNotesPath($namespace)
-            ->setOperationId($function)
-            ->setTags($class)
-            ->setSummary($summary)
-            ->setDescription($description)
-            ->setComments($tables, $columnsRules)
-            ->generate($request, $response);
+        return <<<EOF
+<?php
+
+use OpenApi\Annotations as OA;
+
+/**
+ * @OA\Info(
+ *     version="1.0.0",
+ *     title="通用服務",
+ *     description="- kibana log_type:<br>- kkday-common-svc: request log<br> - kkday-common-svc_db: 查看 db 相關 log<br/>"
+ * )
+ * @OA\Server(url="https://svc-affiliate-35.sit.kkday.com")
+ * @OA\Server(url="https://common.sit.kkday.com")
+ * @OA\Server(url="https://svc.sit.kkday.com")
+ */
+EOF;
     }
 
     /**
-     * @description 数组的方式生成文檔
-     *
-     * @param $params
-     *
-     * @return SwaggerNotes
+     * @description 構建SwaggerPHP注释内容
      */
-    public function generateNotes($params): SwaggerNotes
-    {
-        $apiInfo = $params['api_info'];
-
-        return $this->setTags($apiInfo['tags'])
-            ->setDescription($apiInfo['description'])
-            ->setSummary($apiInfo['summary'])
-            ->setComments($apiInfo['tables'], $apiInfo['rules'])
-            ->setNotesPath(...$params['swagger_path'])
-            ->generate($params['request'], $params['response']);
-    }
-
-    /**
-     * @description 構建swagger-php注释内容
-     */
-    public function formatNotes(): string
+    private function formatNotes(): string
     {
         $method = title_case($this->request->method());
         $summary = $this->summary ?: $this->request->route()->getAction('as', '');
@@ -303,17 +204,19 @@ class SwaggerNotes
         return <<<EOF
 <?php
 
-    /**
-     * @OA\\{$method}(
-     *     path="{$this->request->getPathInfo()}",
-     *     summary="{$summary}",
-     *     description="{$this->description}",
-     *     operationId="{$this->operationId}",
-     *     tags={"{$this->tags}"},
+use OpenApi\Annotations as OA;
+
+/**
+ * @OA\\$method(
+ *     path="{$this->request->getPathInfo()}",
+ *     summary="$summary",
+ *     description="$this->description",
+ *     operationId="$this->operationId",
+ *     tags={"$this->tags"},
 {$this->formatRequestBody()}
 {$this->formatResponse()}
-     * )
-     */
+ * )
+ */
 EOF;
     }
 
@@ -327,21 +230,20 @@ EOF;
         $requestBody = <<<EOF
 EOF;
         if (in_array($this->request->method(), ['GET', 'HEAD'], true)) { // GET HEAD 只能用Parameter
-            $requestBody .= trim($this->formatParameter($this->request), PHP_EOL);
+            $requestBody .= trim($this->formatParameter(), PHP_EOL);
         } else { // POST 、 PUT 接口 均使用 RequestBody
             $type = get_type($this->request);
             $requiredStr = '"' . implode('","', array_keys((array_filter($this->comments, static function ($v) {
                     return $v['required'];
                 })))) . '"';
-            $requestBodyProperty = trim($this->formatProperty($this->request->input()), PHP_EOL);
+            $requestBodyProperty = trim($this->formatProperty($this->request->validated()), PHP_EOL);
             $requestBody .= <<<EOF
-     *     @OA\RequestBody(description="請求Body體",
-     *         @OA\JsonContent(type="{$type}", required={{$requiredStr}},
-{$requestBodyProperty}
-     *         )
-     *     ),
+ *     @OA\RequestBody(description="請求Body體",
+ *         @OA\JsonContent(type="$type", required={$requiredStr},
+$requestBodyProperty
+ *         )
+ *     ),
 EOF;
-
         }
 
         return $requestBody;
@@ -356,21 +258,21 @@ EOF;
     {
         $parameter = <<<EOF
 EOF;
-        foreach ($this->request->toArray() as $field => $value) {
+        foreach ($this->request->validated() as $field => $value) {
             $required = $this->comments[$field]['required'] ?? 'false';
             $description = $this->comments[$field]['comment'] ?? '';
             $type = get_type($value);
             $parameter .= <<<EOF
-     *     @OA\Parameter(
-     *         name="{$field}",
-     *         in="query",
-     *         description="{$description}",
-     *         required={$required},
-     *         @OA\Schema(
-     *             type="{$type}",
-     *             default="{$value}"
-     *         )
-     *     ),
+ *     @OA\Parameter(
+ *         name="$field",
+ *         in="query",
+ *         description="$description",
+ *         required=$required,
+ *         @OA\Schema(
+ *             type="$type",
+ *             default="$value"
+ *         )
+ *     ),
 
 EOF;
         }
@@ -393,32 +295,31 @@ EOF;
 
         $propertyItems = 'Property';
         foreach ($data as $field => $value) {
+            if ($propertyItems === 'Items') {
+                continue;
+            }
             // 如果field為整型，說明是列表，propertyItems使用Items，並把field置空
             is_int($field) && ($propertyItems = 'Items') && $field = '';
-
             // 獲取value的類型類型是否為數組或者對象
             $objectArr = in_array($type = get_type($value), ['object', 'array']);
             $objectValue = !$value && $field ? 'null' : '';
-
             is_bool($value) && $value = $value ? 'true' : 'false'; // 如果value為佈爾型，賦值為字符串
             !$value && $value = 'null';                            // 如果value為假，賦值為null字符串
-
             // 遍歷組裝propertiesItems的元素，只有$v存在且為真時，需要組裝進來
             $propertiesItems = [];
-            foreach (
-                [
-                    'property' => $field,
-                    'type' => $type,
-                    'description' => $this->comments[$field]['comment'] ?? '',
-                    'default' => $objectArr ? $objectValue : $value,
-                ] as $k => $v
-            ) {
+            $arr = [
+                'property' => $field,
+                'type' => $type,
+                'description' => $this->comments[$field]['comment'] ?? '',
+                'default' => $objectArr ? $objectValue : $value,
+            ];
+            foreach ($arr as $k => $v) {
                 $v && $propertiesItems[] = $k . '="' . $v . '"';
             }
             // 打散成字符串
             $propertiesItems = implode(', ', $propertiesItems);
             $property .= <<<EOF
-     *             {$space}@OA\\{$propertyItems}({$propertiesItems}),
+ *             $space@OA\\$propertyItems($propertiesItems),
 
 EOF;
             if ($value !== 'null' && $objectArr) { // 值不為null字符串，且是个对象或者数组，就有子集
@@ -428,8 +329,8 @@ EOF;
                 // 递归拼接子集
                 $properties = trim($this->formatProperty($value, $spaces), PHP_EOL);
                 $property .= <<<EOF
-{$properties}
-     *         {$spaces}),
+$properties
+ *         $spaces),
 
 EOF;
             }
@@ -448,11 +349,11 @@ EOF;
         $responseProperty = trim($this->formatProperty($this->response), PHP_EOL);
 
         return <<<EOF
-     *     @OA\Response(response=200, description="接口返回OK",
-     *         @OA\JsonContent(type="object",
-{$responseProperty}
-     *         )
-     *     ),
+ *     @OA\Response(response=200, description="接口返回OK",
+ *         @OA\JsonContent(type="object",
+$responseProperty
+ *         )
+ *     ),
 EOF;
     }
 }
