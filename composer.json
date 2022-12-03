@@ -1,0 +1,41 @@
+{
+  "name": "michael/toolbox",
+  "type": "composer-plugin",
+  "license": "Apache-2.0",
+  "description": "PHP La ToolBox工具箱",
+  "homepage": "https://github.com/mikeah2011/toolbox",
+  "keywords": [
+    "notes",
+    "toolbox",
+    "swagger",
+    "swagger-php",
+    "swagger-php-notes"
+  ],
+  "require": {
+    "php": "^7.1 || ^8.0",
+    "ext-json": "*"
+  },
+  "require-dev": {
+    "zircote/swagger-php": "latest"
+  },
+  "autoload": {
+    "psr-4": {
+      "Toolbox\\": "src/"
+    },
+    "files": [
+      "src/functions.php"
+    ]
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "authors": [
+    {
+      "name": "Michael",
+      "email": "michael.ma@kkday.com"
+    }
+  ]
+}
