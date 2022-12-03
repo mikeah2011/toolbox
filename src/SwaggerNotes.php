@@ -78,7 +78,7 @@ class SwaggerNotes
     {
         $params = $this->request->validated() + $this->response;
         camel_snake($params, 'snake');
-        !empty($rules) && $rules = $this->request->rules();
+        empty($rules) && $rules = $this->request->rules();
         camel_snake($rules, 'camel');
         // 遞歸過濾出字段，因為response的結構可能會很深
         $columns = [];
