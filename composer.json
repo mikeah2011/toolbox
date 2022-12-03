@@ -1,5 +1,5 @@
 {
-  "name": "michael/toolbox",
+  "name": "michaelma/toolbox",
   "type": "composer-plugin",
   "license": "Apache-2.0",
   "description": "PHP La ToolBox工具箱",
