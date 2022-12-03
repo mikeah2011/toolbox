@@ -12,14 +12,21 @@ class SwaggerNotes
      */
     private $request;
     /**
+     * @var array  请求参数数据
+     */
+    private $validated;
+    /**
      * @var array   返回数据结构
      */
     private $response;
     /**
-     * @var array   入參、出參及其規則字段對應的備註信息和必填
+     * @var array   入參字段規則
      */
-    private $comments;
-
+    private $columnsRules;
+    /**
+     * @var array   出入參備註信息
+     */
+    private $columnsComments;
     /**
      * @var string  SwaggerPHP注釋的接口概述
      */
@@ -76,25 +83,14 @@ class SwaggerNotes
      */
     public function setComments(array $tables = [], array $rules = []): SwaggerNotes
     {
-        $params = $this->request->validated() + $this->response;
-        camel_snake($params, 'snake');
-        empty($rules) && $rules = $this->request->rules();
-        camel_snake($rules, 'camel');
-        // 遞歸過濾出字段，因為response的結構可能會很深
+        $this->columnsRules = $rules ?: $this->request->rules();
+        $this->validated = $this->request->validated();
+        $params = camel_snake($this->validated + $this->response, 'snake');
         $columns = [];
         array_walk_recursive($params, static function ($value, $key) use (&$columns) {
-            in_array($key, $columns, true) && $columns[$key] = $value;
+            in_array($key, $columns, true) && $columns[] = $key;
         });
-        // 獲取指定表的字段信息
-        $columnsInfo = DBBuilder::getColumnsInfo($tables, $columns);
-        foreach ($columnsInfo as &$value) {
-            $value = (array)$value;
-            $rule = $rules[$value['name']] ?? [''];
-            is_string($rule) && $rule = explode('|', $rule);
-            $value['required'] = array_first($rule) === 'required';
-        }
-        unset($value);
-        $this->comments = array_column($columnsInfo, NULL, 'name');
+        $this->columnsComments = camel_snake(array_column(DBBuilder::getColumnsInfo($tables, $columns), NULL, 'name'), 'camel');
 
         return $this;
     }
@@ -233,14 +229,16 @@ EOF;
         if (in_array($this->request->method(), ['GET', 'HEAD'], true)) { // GET HEAD 只能用Parameter
             $requestBody .= trim($this->formatParameter(), PHP_EOL);
         } else { // POST 、 PUT 接口 均使用 RequestBody
-            $type = get_type($this->request);
-            $requiredStr = '"' . implode('","', array_keys((array_filter($this->comments, static function ($v) {
-                    return $v['required'];
-                })))) . '"';
-            $requestBodyProperty = trim($this->formatProperty($this->request->validated()), PHP_EOL);
+
+            $requiredStr = '"' . implode('","', array_keys(array_filter($this->columnsRules, static function ($rule) {
+                    is_string($rule) && $rule = explode('|', $rule);
+                    dd($rule);
+                    return array_first($rule) === 'required';
+                }))) . '"';
+            $requestBodyProperty = trim($this->formatProperty($this->validated), PHP_EOL);
             $requestBody .= <<<EOF
  *     @OA\RequestBody(description="請求Body體",
- *         @OA\JsonContent(type="$type", required={$requiredStr},
+ *         @OA\JsonContent(type="object", required={{$requiredStr}},
 $requestBodyProperty
  *         )
  *     ),
@@ -259,9 +257,20 @@ EOF;
     {
         $parameter = <<<EOF
 EOF;
-        foreach ($this->request->validated() as $field => $value) {
-            $required = $this->comments[$field]['required'] ?? 'false';
-            $description = $this->comments[$field]['comment'] ?? '';
+
+        foreach ($this->validated as $field => $value) {
+            $rules = $this->columnsRules[$field] ?? [''];
+            is_string($rules) && $rules = explode('|', $rules);
+            $string = explode(',', array_last(explode(':', array_last($rules))));
+            $enums = '';
+            if (count($string) > 1) {
+                $enums = implode(',', $string);
+                $enums = PHP_EOL . <<<EOF
+ *             enum={{$enums}},
+EOF;
+            }
+            $required = array_first($rules) === 'required' ? 'true' : 'false';
+            $description = $this->columnsComments[$field]->comment ?? '';
             $type = get_type($value);
             $parameter .= <<<EOF
  *     @OA\Parameter(
@@ -271,7 +280,7 @@ EOF;
  *         required=$required,
  *         @OA\Schema(
  *             type="$type",
- *             default="$value"
+ *             default="$value",$enums
  *         )
  *     ),
 
