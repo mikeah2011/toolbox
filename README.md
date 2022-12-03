@@ -1,9 +1,7 @@
-### 開發工具箱使用簡介 ^Laravel^
+### 開發工具箱 之 `SwaggerNotes`生成工具
 
 
 
->   **`SwaggerNotes`生成工具**
->
 >   註：該工具僅生成注釋內容，依賴`swagger-php`包才能生成`.yaml`接口文件
 
 
@@ -61,6 +59,8 @@
 
 
 
+
+
 [^1]: 如果有任何擴展或者依賴，請自行調整入參為原生`Request`類；
 [^2]:如果沒任何擴展或者依賴，可以不傳`$rules`，腳本會讀`rules()`方法
 [^3]:如果在路由中定義`->name()`，可以不傳`$summary`，腳本會讀`name`內容，如下：
@@ -69,71 +69,5 @@
 #...
 Route::get('kkpartner/view', [AffiliateTransferController::class, 'affiliateView'])->name('查詢大聯盟會員資料');
 #...
-```
-
-
-
->   `DBBuilder` - DB類查詢構造器
->
->   以數組方式重構 DB - CURD；
-
-項目維護久了，很多地方都會佈滿->where()等，如：
-
-![image-20221203172047321](https://cdn.jsdelivr.net/gh/mikeah2011/oss@main/uPic/image-20221203172047321.png)
-
-![image-20221203172336469](https://cdn.jsdelivr.net/gh/mikeah2011/oss@main/uPic/image-20221203172336469.png)
-
-
-
-如果換成如下的數組方式：
-
-![image-20221203173648759](https://cdn.jsdelivr.net/gh/mikeah2011/oss@main/uPic/image-20221203173648759.png)
-
-```php
-// 查詢一群租戶的指定字段，排序創建時間倒序
-$filter = [
-    'mid'         => $customerTid,
-    'jing_uuid'   => $omniUserUuids,
-    'orderBy'     => [
-        'created_timestamp' => 'DESC',
-    ],
-    'queryResult' => [
-        'value' => $columns,
-    ],
-];
-$omniUserLists = DBBuilder::queryBuilder($filter, DB::connection()->table('tableName'));
-```
-
-刪除
-
-```php
-orm_filter([
-    'mid' => $customerTid,
-    'omni_user_uuid' => $omniUserUuids, 
-    'queryResult' => [
-        'type' => 'delete'
-    ]
-], DB::connection('omni_mysql')->table('omni_leads_phase_calculate_record'));
-```
-
-更新
-
-```php
-orm_filter([
-    'mid' => $customerTid,
-    'jing_uuid' => $item['jing_uuid'], 
-    'queryResult' => [
-        'type' => 'update', 
-        'value' => $updateDataTmp
-    ]
-], $omniRepository->getQuery($customerTid));
-```
-
-聚合
-
-```php
-orm_filter($filter + [
-    'queryResult' => ['type' => 'count', 'value' => ['jing_uuid']]
-], $smsMysqlConnection->table('sms_history'));
 ```
 
