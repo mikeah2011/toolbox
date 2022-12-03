@@ -1,8 +1,8 @@
 {
   "name": "michaelma/toolbox",
-  "type": "composer-plugin",
-  "license": "Apache-2.0",
-  "description": "PHP La ToolBox工具箱",
+  "type": "library",
+  "license": "Apache-2.0 MIT",
+  "description": "PHP Laravel ToolBox工具箱",
   "homepage": "https://github.com/mikeah2011/toolbox",
   "keywords": [
     "notes",
