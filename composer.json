@@ -1,7 +1,7 @@
 {
   "name": "michaelma/toolbox",
   "type": "library",
-  "license": "Apache-2.0 MIT",
+  "license": "Apache-2.0",
   "description": "PHP Laravel ToolBox工具箱",
   "homepage": "https://github.com/mikeah2011/toolbox",
   "keywords": [
