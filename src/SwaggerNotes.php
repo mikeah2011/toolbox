@@ -232,7 +232,6 @@ EOF;
 
             $requiredStr = '"' . implode('","', array_keys(array_filter($this->columnsRules, static function ($rule) {
                     is_string($rule) && $rule = explode('|', $rule);
-                    dd($rule);
                     return array_first($rule) === 'required';
                 }))) . '"';
             $requestBodyProperty = trim($this->formatProperty($this->validated), PHP_EOL);
