@@ -23,7 +23,7 @@
       "Toolbox\\": "src/"
     },
     "files": [
-      "src/functions.php"
+      "src/helpers.php"
     ]
   },
   "config": {
