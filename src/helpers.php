@@ -19,7 +19,7 @@ if (!function_exists('camel_snake')) {
      *
      * @return array|null
      */
-    function camel_snake(?array &$array, string $caseType = '', array $mapping = []): ?array
+    function camel_snake(?array $array, string $caseType = '', array $mapping = []): ?array
     {
         $defaultCaseType = $caseType;
         foreach ((array)$array as $k => $v) {
