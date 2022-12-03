@@ -70,15 +70,16 @@ class SwaggerNotes
      * @description 獲取出入參字段的備註信息「含是否必填」
      *
      * @param array $tables 指定表
-     * @param array $rules
+     * @param array $rules  字段規則
      *
      * @return SwaggerNotes
      */
-    public function setComments(array $tables, array $rules = []): SwaggerNotes
+    public function setComments(array $tables = [], array $rules = []): SwaggerNotes
     {
-        $array = $this->request->validated() + $this->response;
-        $params = camel_snake($array, 'snake');
-        $rules = camel_snake($rules ?: $this->request->rules(), 'camel');
+        $params = $this->request->validated() + $this->response;
+        camel_snake($params, 'snake');
+        !empty($rules) && $rules = $this->request->rules();
+        camel_snake($rules, 'camel');
         // 遞歸過濾出字段，因為response的結構可能會很深
         $columns = [];
         array_walk_recursive($params, static function ($value, $key) use (&$columns) {
@@ -160,7 +161,7 @@ class SwaggerNotes
      */
     public function generate(): void
     {
-        $baseDir = base_path('swaggers');
+        $baseDir = base_path('swagger');
         $swaggerNotesDir = $baseDir . '/' . get_class_name(__CLASS__);
         generate_file($swaggerNotesDir, 'swagger.php', $this->formatInfo());
         generate_file($swaggerNotesDir . '/' . $this->tags, $this->operationId . '.php', $this->formatNotes());
