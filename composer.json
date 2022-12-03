@@ -16,7 +16,7 @@
     "ext-json": "*"
   },
   "require-dev": {
-    "zircote/swagger-php": "latest"
+    "zircote/swagger-php": "^3.3.6"
   },
   "autoload": {
     "psr-4": {
