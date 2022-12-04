@@ -1,6 +1,5 @@
 {
   "name": "michael-ma/toolbox",
-  "type": "library",
   "license": "Apache-2.0",
   "description": "PHP Laravel ToolBox工具箱",
   "homepage": "https://github.com/mikeah2011/toolbox",
@@ -16,7 +15,6 @@
     "ext-json": "*"
   },
   "require-dev": {
-    "zircote/swagger-php": "^3.3.6"
   },
   "autoload": {
     "psr-4": {
